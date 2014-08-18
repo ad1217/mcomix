@@ -215,7 +215,7 @@ class FileHandler(object):
 
             self._window.uimanager.set_sensitivities()
             self._window.thumbnailsidebar.load_thumbnails()
-            self._window.uimanager.set_sensitivities()
+            self._window.thumbnailsidebar.update_select()
 
             if self.archive_type is not None:
                 # Get the archive last viewed page.
@@ -224,6 +224,7 @@ class FileHandler(object):
                     len(image_files), self._current_file, confirm=True)
                 if last_image_index != current_image_index:
                     self._window.imagehandler.set_page(last_image_index + 1)
+                    self._window.thumbnailsidebar.update_select()
 
             self.write_fileinfo_file()
 

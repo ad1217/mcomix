@@ -24,7 +24,6 @@ class ThumbnailSidebar(gtk.ScrolledWindow):
         self._loaded = False
         #: Selected page in treeview
         self._currently_selected_page = 0
-        self._selection_is_forced = False
 
         self.set_policy(gtk.POLICY_NEVER, gtk.POLICY_ALWAYS)
         self.get_vadjustment().step_increment = 15
@@ -47,7 +46,7 @@ class ThumbnailSidebar(gtk.ScrolledWindow):
 
         self._treeview.connect_after('drag_begin', self._drag_begin)
         self._treeview.connect('drag_data_get', self._drag_data_get)
-        self._treeview.get_selection().connect('changed', self._selection_event)
+        self._treeview.connect('cursor-changed', self._cursor_changed_event)
 
         # enable drag and dropping of images from thumbnail bar to some file
         # manager
@@ -166,14 +165,11 @@ class ThumbnailSidebar(gtk.ScrolledWindow):
         that the thumbbar is scrolled so that the selected thumb is in view.
         """
 
-        # this is set to True so that when the event 'scroll-event' is triggered
-        # the function _scroll_event will not automatically jump to that page.
-        # this allows for the functionality that when going to a previous page the
-        # main window will start at the bottom of the image.
-        self._selection_is_forced = True
         path = self._window.imagehandler.get_current_page() - 1
+        if path == self._get_selected_row():
+            return
         self._treeview.get_selection().select_path(path)
-        self._treeview.scroll_to_cell(path)
+        self._treeview.scroll_to_cell(path, use_align=True, row_align=0.5)
 
     def change_thumbnail_background_color(self, colour):
         """ Changes the background color of the thumbnail bar. """
@@ -260,21 +256,18 @@ class ThumbnailSidebar(gtk.ScrolledWindow):
         except IndexError:
             return None
 
-    def _selection_event(self, tree_selection, *args):
+    def _cursor_changed_event(self, treeview, *args):
         """Handle events due to changed thumbnail selection."""
 
         if not self._treeview.get_realized():
             # Skip event processing before widget is actually ready
-            self._selection_is_forced = False
             return
 
         if not self._window.was_out_of_focus:
             try:
                 selected_row = self._get_selected_row()
                 self._currently_selected_page = selected_row
-
-                if not self._selection_is_forced:
-                    self._window.set_page(selected_row + 1)
+                self._window.set_page(selected_row + 1)
 
             except Exception:
                 pass
@@ -289,8 +282,6 @@ class ThumbnailSidebar(gtk.ScrolledWindow):
             self._treeview.get_selection().select_path(path)
             self._treeview.scroll_to_cell(path)
             self._window.was_out_of_focus = False
-
-        self._selection_is_forced = False
 
     def _drag_data_get(self, treeview, context, selection, *args):
         """Put the URI of the selected file into the SelectionData, so that
