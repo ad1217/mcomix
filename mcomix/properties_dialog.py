@@ -77,11 +77,11 @@ class _PropertiesDialog(gtk.Dialog):
         # Image tab
         # ----------------------------------------------------------------
         path = window.imagehandler.get_path_to_page()
+        name = window.imagehandler.get_page_name()
         page = properties_page._Page()
         thumb = window.imagehandler.get_thumbnail(width=200, height=128)
         page.set_thumbnail(thumb)
-        filename = os.path.basename(path)
-        page.set_filename(filename)
+        page.set_filename(name)
         try:
             stats = os.stat(path)
             width, height = window.imagehandler.get_size()

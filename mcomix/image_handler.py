@@ -337,14 +337,14 @@ class ImageHandler:
 
     def _file_available(self, filepaths):
         """ Called by the filehandler when a new file becomes available. """
-        # Find the page that corresponds to <filepath>
         if not self._image_files:
             return
 
-        available = sorted(filepaths)
-        for i, imgpath in enumerate(self._image_files):
-            if tools.bin_search(available, imgpath) >= 0:
-                self.page_available(i + 1)
+        # Find the pages that corresponds to <filepaths>
+        for path in filepaths:
+            page_index = self._image_files.index(path)
+            assert -1 != page_index
+            self.page_available(page_index + 1)
 
     def is_last_page(self):
         """Return True if at the last page."""
@@ -407,6 +407,23 @@ class ImageHandler:
             return first, second
 
         return os.path.basename(first_path)
+
+    def get_page_name(self, page=None, double=False):
+        if page is None:
+            page_index = self._current_image_index
+        else:
+            page_index = page - 1
+        if 0 <= page_index < len(self._image_files):
+            img_file = self._image_files[page_index]
+            if img_file in self._name_table:
+                name, extracted_name = self._name_table[img_file]
+            else:
+                name = os.path.basename(img_file)
+        else:
+            name = None
+        if double:
+            return name, self.get_page_name(page_index + 2)
+        return name
 
     def get_pretty_current_filename(self):
         """Return a string with the name of the currently viewed file that is

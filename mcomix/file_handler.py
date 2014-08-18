@@ -55,7 +55,7 @@ class FileHandler(object):
         self._stop_waiting = False
         #: List of comment files inside of the currently opened archive.
         self._comment_files = []
-        #: Mapping of absolute paths to archive path names.
+        #: Mapping of absolute path to (archive name, extracted name).
         self._name_table = {}
         #: Archive extractor.
         self._extractor = archive_extractor.Extractor()
@@ -139,7 +139,7 @@ class FileHandler(object):
         # Actually open the file(s)/archive passed in path.
         if self.archive_type is not None:
             try:
-                self._open_archive(self._current_file, start_page)
+                self._open_archive(self._current_file)
             except Exception, ex:
                 self.file_loaded = False
                 self.file_loading = False
@@ -149,13 +149,11 @@ class FileHandler(object):
                 return False
             self.file_loading = True
         else:
-            image_files, current_image_index = \
-                self._open_image_files(filelist, self._current_file)
-            self._archive_opened(image_files, current_image_index)
+            self._archive_opened(filelist)
 
         return True
 
-    def _archive_opened(self, image_files, current_image_index):
+    def _archive_opened(self, image_files):
         """ Called once the archive has been opened and its contents listed.
         """
         if self.archive_type is not None:
@@ -187,7 +185,25 @@ class FileHandler(object):
         else:
             self.file_loaded = True
             self.file_load_failed = False
+
+            # Preemptively set _image files of ImageHandler, to prevent
+            # extraction callbacks from being ignored, as the ImageHandler
+            # needs the list of files to translate from file name to page index
             self._window.imagehandler._image_files = image_files
+
+            if self.archive_type is None:
+                # If no extraction is required, mark all files as available.
+                self.file_available(self.filelist)
+                # Set current page to current file.
+                if self._current_file in self.filelist:
+                    current_image_index = self.filelist.index(self._current_file)
+                else:
+                    current_image_index = 0
+            else:
+                # Otherwise start the extraction.
+                self._extractor.extract()
+                current_image_index = 0
+
             self._window.imagehandler._current_image_index = current_image_index
             self._window.imagehandler._base_path = self._base_path
             self._window.imagehandler._current_file = self._current_file
@@ -201,13 +217,15 @@ class FileHandler(object):
             self._window.thumbnailsidebar.load_thumbnails()
             self._window.uimanager.set_sensitivities()
 
+            if self.archive_type is not None:
+                # Get the archive last viewed page.
+                # This call might block due to displaying a confirmation dialog.
+                last_image_index = self._get_index_for_page(self._start_page,
+                    len(image_files), self._current_file, confirm=True)
+                if last_image_index != current_image_index:
+                    self._window.imagehandler.set_page(last_image_index + 1)
+
             self.write_fileinfo_file()
-
-            # If no extraction is required, mark all files as available instantly.
-            if self.archive_type is None:
-                self.file_available(self.filelist)
-
-        tools.alphanumeric_sort(self._comment_files)
 
         self._window.uimanager.recent.add(self._current_file)
 
@@ -233,7 +251,7 @@ class FileHandler(object):
         self._base_path = None
         self._stop_waiting = True
         self._comment_files = []
-        self._name_table.clear()
+        self._name_table = {}
         self._window.clear()
         self._window.uimanager.set_sensitivities()
         self._extractor.stop()
@@ -300,7 +318,7 @@ class FileHandler(object):
         else:
             return None
 
-    def _open_archive(self, path, start_page):
+    def _open_archive(self, path):
         """ Opens the archive passed in C{path}.
 
         Creates an L{archive_extractor.Extractor} and extracts all images
@@ -324,47 +342,40 @@ class FileHandler(object):
             return
         self.file_loading = False
 
-        files = self._extractor.get_files()
+        files = self._extractor.get_contents()
         archive_images = [image for image in files
             if self._image_re.search(image)
             # Remove MacOS meta files from image list
             and not u'__MACOSX' in os.path.normpath(image).split(os.sep)]
 
         archive_images = self._sort_archive_images(archive_images)
-        image_files = [ os.path.join(self._tmp_dir, f)
-                        for f in archive_images ]
+
+        image_files = []
+        for n, name in enumerate(archive_images):
+            ext = os.path.splitext(name)[1].lower()
+            extracted_name = 'i%04u%s' % (n + 1, ext)
+            extracted_path = os.path.join(self._tmp_dir, extracted_name)
+            self._name_table[extracted_path] = (name, extracted_name)
+            image_files.append(extracted_path)
 
         comment_files = filter(self._comment_re.search, files)
-        self._comment_files = [ os.path.join(self._tmp_dir, f)
-                                for f in comment_files ]
+        tools.alphanumeric_sort(comment_files)
 
-        for name, full_path in zip(archive_images, image_files):
-            self._name_table[full_path] = name
+        self._comment_files = []
+        for n, name in enumerate(comment_files):
+            ext = os.path.splitext(name)[1].lower()
+            extracted_name = 'c%04u%s' % (n + 1, ext)
+            extracted_path = os.path.join(self._tmp_dir, extracted_name)
+            self._name_table[extracted_path] = (name, extracted_name)
+            self._comment_files.append(extracted_path)
 
-        for name, full_path in zip(comment_files, self._comment_files):
-            self._name_table[full_path] = name
+        files = []
+        for extracted_path in image_files + self._comment_files:
+            name, extracted_name = self._name_table[extracted_path]
+            files.append((name, extracted_name))
+        self._extractor.set_files(files)
 
-        # Determine current archive image index.
-        current_image_index = self._get_index_for_page(self._start_page,
-            len(image_files), self._current_file)
-
-        # Sort files to determine extraction order.
-        self._sort_archive_files(archive_images, current_image_index)
-
-        self._extractor.set_files(archive_images + comment_files)
-        self._extractor.extract()
-
-        # Preemptively set _image files of ImageHandler, to prevent extraction callbacks
-        # from being ignored, as the ImageHandler needs the list of files
-        # to translate from file name to page index
-        self._window.imagehandler._image_files = image_files
-
-        # Image index may have changed after additional files were extracted.
-        # This call might block due to displaying a confirmation dialog.
-        current_image_index = self._get_index_for_page(self._start_page,
-            len(image_files), self._current_file, confirm=True)
-
-        self._archive_opened(image_files, current_image_index)
+        self._archive_opened(image_files)
 
     def _sort_archive_images(self, filelist):
         """ Sorts the image list passed in C{filelist} based on the sorting
@@ -438,26 +449,6 @@ class FileHandler(object):
         else:
             return 1
 
-    def _sort_archive_files(self, archive_images, current_image_index):
-        """ Sorts the list C{archive_images} in place based on a priority order
-        algorithm. """
-
-        depth = self._window.is_double_page and 2 or 1
-
-        priority_ordering = (
-            range(current_image_index,
-                current_image_index + depth * 2) +
-            range(current_image_index - depth,
-                current_image_index)[::-1])
-
-        priority_ordering = [archive_images[p] for p in priority_ordering
-            if 0 <= p <= len(archive_images) - 1]
-
-        for i, name in enumerate(priority_ordering):
-            archive_images.remove(name)
-            archive_images.insert(i, name)
-
-
     def _open_image_files(self, filelist, image_path):
         """ Opens all files passed in C{filelist}.
 
@@ -493,7 +484,8 @@ class FileHandler(object):
         """
         self._wait_on_comment(num)
         try:
-            fd = open(self._comment_files[num - 1], 'r')
+            path = self._comment_files[num - 1]
+            fd = open(path, 'r')
             text = fd.read()
             fd.close()
         except Exception:
@@ -502,7 +494,9 @@ class FileHandler(object):
 
     def get_comment_name(self, num):
         """Return the filename of comment <num>."""
-        return self._comment_files[num - 1]
+        path = self._comment_files[num - 1]
+        name, extracted_name = self._name_table[path]
+        return name
 
     def update_comment_extensions(self):
         """Update the regular expression used to filter out comments in
@@ -638,7 +632,8 @@ class FileHandler(object):
 
         if self.archive_type is not None:
             with self._condition:
-                return self._extractor.is_ready(self._name_table[filepath])
+                name, extracted_name = self._name_table[filepath]
+                return self._extractor.is_ready(name)
 
         elif filepath is None:
             return False
@@ -656,13 +651,13 @@ class FileHandler(object):
         """
         pass
 
-    def _extracted_file(self, extractor, name):
+    def _extracted_file(self, extractor, name, extracted_name):
         """ Called when the extractor finishes extracting the file at
         <name>. This name is relative to the temporary directory
         the files were extracted to. """
         if not self.file_loaded:
             return
-        filepath = os.path.join(extractor.get_directory(), name)
+        filepath = os.path.join(extractor.get_directory(), extracted_name)
         self.file_available([filepath])
 
     def _wait_on_comment(self, num):
@@ -681,7 +676,7 @@ class FileHandler(object):
             return
 
         try:
-            name = self._name_table[path]
+            name, extracted_name = self._name_table[path]
             with self._condition:
                 while not self._extractor.is_ready(name) and not self._stop_waiting:
                     self._condition.wait()
@@ -698,10 +693,11 @@ class FileHandler(object):
         with self._condition:
             extractor_files = self._extractor.get_files()
             for path in reversed(files):
-                name = self._name_table[path]
+                name, extracted_name = self._name_table[path]
                 if not self._extractor.is_ready(name):
-                    extractor_files.remove(name)
-                    extractor_files.insert(0, name)
+                    entry = (name, extracted_name)
+                    extractor_files.remove(entry)
+                    extractor_files.insert(0, entry)
             self._extractor.set_files(extractor_files)
 
     def thread_delete(self, path):

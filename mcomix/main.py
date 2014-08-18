@@ -415,7 +415,7 @@ class MainWindow(gtk.Window):
                 self.imagehandler.get_number_of_pages(), 2) # XXX implied by self.displayed_double() == True
 
             left_filename, right_filename = \
-                self.imagehandler.get_page_filename(double=True)
+                self.imagehandler.get_page_name(double=True)
 
             if self.is_manga_mode:
                 left_filename, right_filename = right_filename, left_filename
@@ -426,7 +426,7 @@ class MainWindow(gtk.Window):
                 self.imagehandler.get_current_page(),
                 self.imagehandler.get_number_of_pages(), 1) # XXX implied by self.displayed_double() == False
 
-            self.statusbar.set_filename(self.imagehandler.get_page_filename())
+            self.statusbar.set_filename(self.imagehandler.get_page_name())
 
         self.statusbar.set_root(self.filehandler.get_base_filename())
         self.statusbar.update()
