@@ -2,7 +2,6 @@
 
 """ Unicode-aware wrapper for zipfile.ZipFile. """
 
-import os
 import zipfile
 import threading
 from contextlib import closing
@@ -47,8 +46,8 @@ class ZipArchive(archive_base.NonUnicodeArchive):
         for filename in self.zip.namelist():
             yield self._unicode_filename(filename)
 
-    def extract(self, filename, destination_dir):
-        new = self._create_file(os.path.join(destination_dir, filename))
+    def extract(self, filename, destination_path):
+        new = self._create_file(destination_path)
         content = self.zip.read(self._original_filename(filename))
         new.write(content)
         new.close()

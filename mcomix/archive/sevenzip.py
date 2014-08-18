@@ -74,10 +74,10 @@ class SevenZipArchive(archive_base.ExternalExecutableArchive):
     def is_solid(self):
         return self._is_solid
 
-    def extract(self, filename, destination_dir):
-        """ Extract <filename> from the archive to <destination_dir>. """
+    def extract(self, filename, destination_path):
+        """ Extract <filename> from the archive to <destination_path>. """
         assert isinstance(filename, unicode) and \
-                isinstance(destination_dir, unicode)
+                isinstance(destination_path, unicode)
 
         if not self._get_executable():
             return
@@ -101,7 +101,7 @@ class SevenZipArchive(archive_base.ExternalExecutableArchive):
 
             if fd:
                 # Create new file
-                new = self._create_file(os.path.join(destination_dir, filename))
+                new = self._create_file(destination_path)
                 stdout, stderr = proc.communicate()
                 new.write(stdout)
                 new.close()
@@ -112,7 +112,7 @@ class SevenZipArchive(archive_base.ExternalExecutableArchive):
         finally:
             os.unlink(tmplistfile.name)
 
-    def iter_extract(self, entries, destination_dir):
+    def iter_extract(self, entries):
 
         if not self._get_executable():
             return
@@ -128,20 +128,18 @@ class SevenZipArchive(archive_base.ExternalExecutableArchive):
             return
 
         try:
-            wanted = dict([(self._original_filename(unicode_name), unicode_name)
-                           for unicode_name in entries])
+            wanted = dict([(self._original_filename(name), (name, path))
+                           for name, path in entries.iteritems()])
 
             for filename, filesize in self._contents:
                 data = fd.read(filesize)
                 if filename not in wanted:
                     continue
-                unicode_name = wanted.get(filename, None)
-                if unicode_name is None:
-                    continue
-                new = self._create_file(os.path.join(destination_dir, unicode_name))
+                name, path = wanted.get(filename, None)
+                new = self._create_file(path)
                 new.write(data)
                 new.close()
-                yield unicode_name
+                yield name
                 del wanted[filename]
                 if 0 == len(wanted):
                     break
