@@ -19,6 +19,7 @@ class _Page(gtk.VBox):
         topbox = gtk.HBox(False, 12)
         self.pack_start(topbox, False)
         self._thumb = gtk.Image()
+        self._thumb.set_size_request(200, 128)
         topbox.pack_start(self._thumb, False, False)
         borderbox = gtk.EventBox()
         borderbox.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#333'))
@@ -30,9 +31,22 @@ class _Page(gtk.VBox):
         self._fg = gtk.gdk.color_parse('#000')
         insidebox.modify_bg(gtk.STATE_NORMAL, self._bg)
         borderbox.add(insidebox)
+        self._insidebox = insidebox
+        self._mainbox = None
+        self._extrabox = None
+        self.reset()
+
+    def reset(self):
+        self._thumb.clear()
+        if self._mainbox is not None:
+            self._mainbox.destroy()
         self._mainbox = gtk.VBox(False, 5)
         self._mainbox.set_border_width(10)
-        insidebox.add(self._mainbox)
+        self._insidebox.add(self._mainbox)
+        if self._extrabox is not None:
+            self._extrabox.destroy()
+        self._extrabox = gtk.HBox(False, 10)
+        self.pack_start(self._extrabox, False, False)
 
     def set_thumbnail(self, pixbuf):
         pixbuf = image_tools.add_border(pixbuf, 1)
@@ -62,12 +76,10 @@ class _Page(gtk.VBox):
         """Set the information below the main info box to the values in the
         sequence <info>. Each entry in info should be a tuple (desc, value).
         """
-        hbox = gtk.HBox(False, 10)
-        self.pack_start(hbox, False, False)
         left_box = gtk.VBox(True, 8)
         right_box = gtk.VBox(True, 8)
-        hbox.pack_start(left_box, False, False)
-        hbox.pack_start(right_box, False, False)
+        self._extrabox.pack_start(left_box, False, False)
+        self._extrabox.pack_start(right_box, False, False)
         for desc, value in info:
             desc_label = labels.BoldLabel('%s:' % desc)
             desc_label.set_alignment(1.0, 1.0)

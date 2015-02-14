@@ -40,7 +40,7 @@ class ImageHandler:
         #: Archive path, if currently opened file is archive
         self._base_path = None
         #: List of image file names, either from extraction or directory
-        self._image_files = None
+        self._image_files = []
         #: Index of current page
         self._current_image_index = None
         #: Set of images reading for decoding (i.e. already extracted)
@@ -303,6 +303,9 @@ class ImageHandler:
         else:
             pages = [ page ]
 
+        # pages = [page for page in pages
+                 # if 0 <= page - 1 and page < len(self._image_files)]
+
         for page in pages:
             path = self.get_path_to_page(page)
             if not self._window.filehandler.file_is_available(path):
@@ -366,13 +369,12 @@ class ImageHandler:
         page if <page> is None.
         """
         if page is None:
-            if self._current_image_index < len(self._image_files):
-                return self._image_files[self._current_image_index]
-            else:
-                return None
+            page = self._current_image_index
+        else:
+            page = page - 1
 
-        if page - 1 < len(self._image_files):
-            return self._image_files[page - 1]
+        if 0 <= page < len(self._image_files):
+            return self._image_files[page]
         else:
             return None
 
@@ -426,7 +428,6 @@ class ImageHandler:
         self._wait_on_page(page)
 
         page_path = self.get_path_to_page(page)
-
         if page_path != None:
             info = gtk.gdk.pixbuf_get_file_info(page_path)
         else:
@@ -444,7 +445,6 @@ class ImageHandler:
         self._wait_on_page(page)
 
         page_path = self.get_path_to_page(page)
-
         if page_path != None:
             info = gtk.gdk.pixbuf_get_file_info(page_path)
         else:
@@ -466,13 +466,11 @@ class ImageHandler:
 
         If <nowait> is True, don't wait for <page> to be available.
         """
-        if page is None:
-            page = self.get_current_page()
         if not self._wait_on_page(page, check_only=nowait):
             # Page is not available!
             return None
-        path = self.get_path_to_page(page)
 
+        path = self.get_path_to_page(page)
         if path == None:
             return None
 
@@ -502,12 +500,14 @@ class ImageHandler:
             return 2
         return 1
 
-    def _wait_on_page(self, page, check_only=False):
+    def _wait_on_page(self, page=None, check_only=False):
         """Block the running (main) thread until the file corresponding to
         image <page> has been fully extracted.
 
         If <check_only> is True, only check (and return status), don't wait.
         """
+        if page is None:
+            page = self.get_current_page()
         index = page - 1
         if index in self._available_images:
             # Already extracted!
