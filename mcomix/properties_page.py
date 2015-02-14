@@ -26,7 +26,9 @@ class _Page(gtk.VBox):
         topbox.pack_start(borderbox)
         insidebox = gtk.EventBox()
         insidebox.set_border_width(1)
-        insidebox.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#ddb'))
+        self._bg = gtk.gdk.color_parse('#ddb')
+        self._fg = gtk.gdk.color_parse('#000')
+        insidebox.modify_bg(gtk.STATE_NORMAL, self._bg)
         borderbox.add(insidebox)
         self._mainbox = gtk.VBox(False, 5)
         self._mainbox.set_border_width(10)
@@ -42,6 +44,7 @@ class _Page(gtk.VBox):
         """
         label = labels.BoldLabel(i18n.to_unicode(filename))
         label.set_alignment(0, 0.5)
+        label.modify_fg(gtk.STATE_NORMAL, self._fg)
         self._mainbox.pack_start(label, False, False)
         self._mainbox.pack_start(gtk.VBox()) # Just to add space (better way?)
 
@@ -52,6 +55,7 @@ class _Page(gtk.VBox):
         for text in info:
             label = gtk.Label(text)
             label.set_alignment(0, 0.5)
+            label.modify_fg(gtk.STATE_NORMAL, self._fg)
             self._mainbox.pack_start(label, False, False)
 
     def set_secondary_info(self, info):
