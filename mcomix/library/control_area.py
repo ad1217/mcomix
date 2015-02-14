@@ -31,9 +31,12 @@ class _ControlArea(gtk.HBox):
         borderbox.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#333'))
         borderbox.set_size_request(350, -1)
 
+        bg = gtk.gdk.color_parse('#ddb')
+        fg = gtk.gdk.color_parse('#000')
+
         insidebox = gtk.EventBox()
         insidebox.set_border_width(1)
-        insidebox.modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse('#ddb'))
+        insidebox.modify_bg(gtk.STATE_NORMAL, bg)
 
         infobox = gtk.VBox(False, 5)
         infobox.set_border_width(10)
@@ -45,17 +48,20 @@ class _ControlArea(gtk.HBox):
         self._namelabel.set_alignment(0, 0.5)
         self._namelabel.set_selectable(True)
         self._namelabel.set_ellipsize(pango.ELLIPSIZE_MIDDLE)
+        self._namelabel.modify_fg(gtk.STATE_NORMAL, fg)
         infobox.pack_start(self._namelabel, False, False)
 
         self._filelabel = gtk.Label()
         self._filelabel.set_ellipsize(pango.ELLIPSIZE_MIDDLE)
         self._filelabel.set_alignment(0, 0.5)
+        self._filelabel.modify_fg(gtk.STATE_NORMAL, fg)
         infobox.pack_start(self._filelabel, False, False)
 
         self._dirlabel = gtk.Label()
         self._dirlabel.set_ellipsize(pango.ELLIPSIZE_MIDDLE)
         self._dirlabel.set_alignment(0, 0.5)
         self._dirlabel.set_selectable(True)
+        self._dirlabel.modify_fg(gtk.STATE_NORMAL, fg)
         infobox.pack_start(self._dirlabel, False, False)
 
         vbox = gtk.VBox(False, 10)
