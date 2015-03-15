@@ -5,7 +5,7 @@ import binascii
 import re
 import sys
 import operator
-import gtk
+from gi.repository import GLib, GdkPixbuf, Gdk, Gtk
 from PIL import Image
 from PIL import ImageEnhance
 from PIL import ImageOps
@@ -33,8 +33,8 @@ else:
     SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
                                        '|'.join(sorted(reduce(
                                            operator.add,
-                                           map(operator.itemgetter("extensions"),
-                                               gtk.gdk.pixbuf_get_formats())))),
+                                           map(lambda fmt: fmt.get_extensions(),
+                                               GdkPixbuf.Pixbuf.get_formats())))),
                                        re.I)
 
 
@@ -43,11 +43,11 @@ def rotate_pixbuf(src, rotation):
     if 0 == rotation:
         return src
     if 90 == rotation:
-        return src.rotate_simple(gtk.gdk.PIXBUF_ROTATE_CLOCKWISE)
+        return src.rotate_simple(GdkPixbuf.PixbufRotation.CLOCKWISE)
     if 180 == rotation:
-        return src.rotate_simple(gtk.gdk.PIXBUF_ROTATE_UPSIDEDOWN)
+        return src.rotate_simple(GdkPixbuf.PixbufRotation.UPSIDEDOWN)
     if 270 == rotation:
-        return src.rotate_simple(gtk.gdk.PIXBUF_ROTATE_COUNTERCLOCKWISE)
+        return src.rotate_simple(GdkPixbuf.PixbufRotation.COUNTERCLOCKWISE)
     raise ValueError("unsupported rotation: %s" % rotation)
 
 def fit_pixbuf_to_rectangle(src, rect, rotation):
@@ -127,7 +127,7 @@ def add_border(pixbuf, thickness, colour=0x000000FF):
     """Return a pixbuf from <pixbuf> with a <thickness> px border of
     <colour> added.
     """
-    canvas = gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB, True, 8,
+    canvas = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, True, 8,
         pixbuf.get_width() + thickness * 2,
         pixbuf.get_height() + thickness * 2)
     canvas.fill(colour)
@@ -211,7 +211,7 @@ def get_most_common_edge_colour(pixbufs, edge=2):
         height = pixbuf.get_height()
         edge = min(edge, width, height)
 
-        subpix = gtk.gdk.Pixbuf(gtk.gdk.COLORSPACE_RGB,
+        subpix = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB,
                 pixbuf.get_has_alpha(), 8, edge, height)
         if side == 'left':
             pixbuf.copy_area(0, 0, edge, height, subpix, 0, 0)
@@ -252,15 +252,15 @@ def pil_to_pixbuf(image, keep_orientation=False):
     """Return a pixbuf created from the PIL <image>."""
     if image.mode.startswith('RGB'):
         imagestr = image.tostring()
-        IS_RGBA = image.mode == 'RGBA'
-        pixbuf = gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
-            IS_RGBA, 8, image.size[0], image.size[1],
-            (IS_RGBA and 4 or 3) * image.size[0])
+        has_alpha = image.mode == 'RGBA'
     else:
         imagestr = image.convert('RGB').tostring()
-        pixbuf = gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
-            False, 8, image.size[0], image.size[1],
-            3 * image.size[0])
+        has_alpha = False
+    pixels = GLib.Bytes.new(imagestr)
+    pixbuf = GdkPixbuf.Pixbuf.new_from_bytes(
+        pixels, GdkPixbuf.Colorspace.RGB, has_alpha, 8,
+        image.size[0], image.size[1], (4 if has_alpha else 3) * image.size[0]
+    )
     if keep_orientation:
         # Keep orientation metadata.
         orientation = None
@@ -288,7 +288,7 @@ def load_pixbuf(path):
     """ Loads a pixbuf from a given image file. """
     if USE_PIL:
         return pil_to_pixbuf(Image.open(path), keep_orientation=True)
-    return gtk.gdk.pixbuf_new_from_file(path)
+    return GdkPixbuf.Pixbuf.new_from_file(path)
 
 def load_pixbuf_size(path, width, height):
     """ Loads a pixbuf from a given image file and scale it to fit
@@ -299,13 +299,13 @@ def load_pixbuf_size(path, width, height):
         return pil_to_pixbuf(im, keep_orientation=True)
     format, src_width, src_height = get_image_info(path)
     if src_width <= width and src_height <= height:
-        src = gtk.gdk.pixbuf_new_from_file(path)
+        src = GdkPixbuf.Pixbuf.new_from_file(path)
     else:
         # Work around GdkPixbuf bug: https://bugzilla.gnome.org/show_bug.cgi?id=735422
         if 'GIF' == format:
-            src = gtk.gdk.pixbuf_new_from_file(path)
-            return fit_in_rectangle(src, width, height, scaling_quality=gtk.gdk.INTERP_BILINEAR)
-        src = gtk.gdk.pixbuf_new_from_file_at_size(path, width, height)
+            src = GdkPixbuf.Pixbuf.new_from_file(path)
+            return fit_in_rectangle(src, width, height, scaling_quality=GdkPixbuf.InterpType.BILINEAR)
+        src = GdkPixbuf.Pixbuf.new_from_file_at_size(path, width, height)
         src_width, src_height = src.get_width(), src.get_height()
     if src.get_has_alpha():
         if prefs['checkered bg for transparent images']:
@@ -320,8 +320,8 @@ def load_pixbuf_data(imgdata):
     """ Loads a pixbuf from the data passed in <imgdata>. """
     if USE_PIL:
         return pil_to_pixbuf(Image.open(StringIO(imgdata)), keep_orientation=True)
-    loader = gtk.gdk.PixbufLoader()
-    loader.write(imgdata, len(imgdata))
+    loader = GdkPixbuf.PixbufLoader()
+    loader.write(imgdata)
     loader.close()
     return loader.get_pixbuf()
 
@@ -351,7 +351,7 @@ def _get_png_implied_rotation(pixbuf_or_image):
 
     Lookup for Exif data in the tEXt chunk.
     """
-    if isinstance(pixbuf_or_image, gtk.gdk.Pixbuf):
+    if isinstance(pixbuf_or_image, GdkPixbuf.Pixbuf):
         exif = pixbuf_or_image.get_option('tEXt::Raw profile type exif')
     elif isinstance(pixbuf_or_image, ImageFile):
         exif = pixbuf_or_image.info.get('Raw profile type exif')
@@ -427,8 +427,10 @@ def combine_pixbufs( pixbuf1, pixbuf2, are_in_manga_mode ):
 
     new_height = max( l_source_pixbuf_height, r_source_pixbuf_height )
 
-    new_pix_buf = gtk.gdk.Pixbuf( gtk.gdk.COLORSPACE_RGB, has_alpha,
-        bits_per_sample, new_width, new_height )
+    new_pix_buf = GdkPixbuf.Pixbuf.new(colorspace=GdkPixbuf.Colorspace.RGB,
+                                       has_alpha=has_alpha,
+                                       bits_per_sample=bits_per_sample,
+                                       width=new_width, height=new_height)
 
     l_source_pixbuf.copy_area( 0, 0, l_source_pixbuf_width,
                                      l_source_pixbuf_height,
@@ -459,9 +461,9 @@ def get_image_info(path):
     """Return image informations:
         (format, width, height)
     """
-    infos = gtk.gdk.pixbuf_get_file_info(path)
-    if infos is None:
+    infos = GdkPixbuf.Pixbuf.get_file_info(path)
+    if infos[0] is None:
         return (_('Unknown filetype'), 0, 0)
-    return infos[0]['name'].upper(), infos[1], infos[2]
+    return infos[0].get_name().upper(), infos[1], infos[2]
 
 # vim: expandtab:sw=4:ts=4

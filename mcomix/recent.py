@@ -2,9 +2,10 @@
 
 import urllib
 import itertools
-import gtk
+from gi.repository import Gtk
+from gi.repository import Gtk
 import glib
-import gobject
+from gi.repository import GObject
 import sys
 
 from mcomix import preferences
@@ -13,21 +14,21 @@ from mcomix import portability
 from mcomix import constants
 from mcomix import log
 
-class RecentFilesMenu(gtk.RecentChooserMenu):
+class RecentFilesMenu(Gtk.RecentChooserMenu):
 
     def __init__(self, ui, window):
+        super(RecentFilesMenu, self).__init__()
         self._window = window
-        self._manager = gtk.recent_manager_get_default()
-        super(RecentFilesMenu, self).__init__(self._manager)
+        self._manager = Gtk.RecentManager.get_default()
 
-        self.set_sort_type(gtk.RECENT_SORT_MRU)
+        self.set_sort_type(Gtk.RecentSortType.MRU)
         self.set_show_tips(True)
         # Missing icons crash GTK on Win32
         if sys.platform == 'win32':
             self.set_show_icons(False)
             self.set_show_numbers(True)
 
-        rfilter = gtk.RecentFilter()
+        rfilter = Gtk.RecentFilter()
         rfilter.add_pixbuf_formats()
 
         mimetypes, patterns = itertools.izip(constants.ZIP_FORMATS,
@@ -76,7 +77,7 @@ class RecentFilesMenu(gtk.RecentChooserMenu):
         """ Removes all entries to recently opened files. """
         try:
             self._manager.purge_items()
-        except gobject.GError, error:
+        except GObject.GError, error:
             log.debug(error)
 
 

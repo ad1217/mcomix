@@ -1,6 +1,6 @@
 """file_chooser_main_dialog.py - Custom FileChooserDialog implementations."""
 
-import gtk
+from gi.repository import Gtk
 
 from mcomix.preferences import prefs
 from mcomix import file_chooser_base_dialog
@@ -17,7 +17,7 @@ class _MainFileChooserDialog(file_chooser_base_dialog._BaseFileChooserDialog):
         self.set_transient_for(window)
         self.filechooser.set_select_multiple(True)
 
-        ffilter = gtk.FileFilter()
+        ffilter = Gtk.FileFilter()
         ffilter.add_pixbuf_formats()
         ffilter.set_name(_('All images'))
         self.filechooser.add_filter(ffilter)
