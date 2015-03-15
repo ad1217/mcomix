@@ -116,7 +116,7 @@ setuptools.setup(
     options = {
         'py2exe' : {
             'packages' : 'mcomix.messages, mcomix.images, encodings',
-            'includes' : 'cairo, pango, pangocairo, atk, gobject, gio, gtk.keysyms',
+            'includes' : 'cairo, pango, pangocairo, atk, gobject, gio, Gtk.keysyms',
             'dist_dir' : 'dist_py2exe',
             'excludes' : ['_ssl', 'pyreadline', 'difflib', 'doctest', 
                           'pdb', 'unittest', 'inspect']

@@ -89,25 +89,25 @@ PDF_FORMATS = (
 
 MISSING_IMAGE_ICON = None
 try:
-    import gtk
+    from gi.repository import Gdk, GdkPixbuf, Gtk
 
-    _missing_icon_dialog = gtk.Dialog(None,None,0,None)
+    _missing_icon_dialog = Gtk.Dialog(None,None,0,None)
     _missing_icon_pixbuf = _missing_icon_dialog.render_icon(
-            gtk.STOCK_MISSING_IMAGE, gtk.ICON_SIZE_LARGE_TOOLBAR)
+            Gtk.STOCK_MISSING_IMAGE, Gtk.IconSize.LARGE_TOOLBAR)
 
     # Pixbuf is None when running without X server.
     # Setup.py could fail because of this.
     if _missing_icon_pixbuf:
         MISSING_IMAGE_ICON = _missing_icon_pixbuf
 
-    GTK_GDK_COLOR_BLACK = gtk.gdk.color_parse('black')
-    GTK_GDK_COLOR_WHITE = gtk.gdk.color_parse('white')
+    GTK_GDK_COLOR_BLACK = Gdk.color_parse('black')
+    GTK_GDK_COLOR_WHITE = Gdk.color_parse('white')
 
     SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
                                        '|'.join(sorted(reduce(
                                            operator.add,
-                                           map(operator.itemgetter("extensions"),
-                                               gtk.gdk.pixbuf_get_formats())))),
+                                           map(lambda fmt: fmt.get_extensions(),
+                                               GdkPixbuf.Pixbuf.get_formats())))),
                                        re.I)
 
 except ImportError:

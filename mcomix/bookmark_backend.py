@@ -2,7 +2,7 @@
 
 import os
 import cPickle
-import gtk
+from gi.repository import Gtk
 import operator
 import datetime
 import time
@@ -87,15 +87,14 @@ class __BookmarksStore:
         # If the same file was already bookmarked, ask to replace
         # the existing bookmarks before deleting them.
         if len(same_file_bookmarks) > 0:
-            interface = BookmarkInterface()
-            response = interface.show_replace_bookmark_dialog(same_file_bookmarks, page)
+            response = self.show_replace_bookmark_dialog(same_file_bookmarks, page)
 
             # Delete old bookmarks
-            if response == gtk.RESPONSE_YES:
+            if response == Gtk.ResponseType.YES:
                 for bookmark in same_file_bookmarks:
                     self.remove_bookmark(bookmark)
             # Perform no action
-            elif response not in (gtk.RESPONSE_YES, gtk.RESPONSE_NO):
+            elif response not in (Gtk.ResponseType.YES, Gtk.ResponseType.NO):
                 return
 
         self.add_bookmark_by_values(name, path, page, numpages,
@@ -191,20 +190,18 @@ class __BookmarksStore:
         self._bookmarks_mtime = long(time.time())
 
 
-class BookmarkInterface(object):
-
     def show_replace_bookmark_dialog(self, old_bookmarks, new_page):
         """ Present a confirmation dialog to replace old bookmarks.
         @return RESPONSE_YES to create replace bookmarks,
             RESPONSE_NO to create a new bookmark, RESPONSE_CANCEL to abort creating
             a new bookmark. """
-        dialog = message_dialog.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO)
-        dialog.add_buttons(gtk.STOCK_YES, gtk.RESPONSE_YES,
-             gtk.STOCK_NO, gtk.RESPONSE_NO,
-             gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
-        dialog.set_default_response(gtk.RESPONSE_YES)
+        dialog = message_dialog.MessageDialog(self._window, Gtk.DialogFlags.MODAL, Gtk.MessageType.INFO)
+        dialog.add_buttons(Gtk.STOCK_YES, Gtk.ResponseType.YES,
+             Gtk.STOCK_NO, Gtk.ResponseType.NO,
+             Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        dialog.set_default_response(Gtk.ResponseType.YES)
         dialog.set_should_remember_choice('replace-existing-bookmark',
-            (gtk.RESPONSE_YES, gtk.RESPONSE_NO))
+            (Gtk.ResponseType.YES, Gtk.ResponseType.NO))
 
         pages = map(str, sorted(map(operator.attrgetter('_page'), old_bookmarks)))
         dialog.set_text(

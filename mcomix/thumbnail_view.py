@@ -1,25 +1,25 @@
-""" gtk.IconView subclass for dynamically generated thumbnails. """
+""" Gtk.IconView subclass for dynamically generated thumbnails. """
 
 import Queue
-import gtk
-import gobject
+from gi.repository import Gtk
+from gi.repository import GObject
 
 from mcomix.preferences import prefs
 from mcomix.worker_thread import WorkerThread
 
 
 class ThumbnailViewBase(object):
-    """ This class provides shared functionality for gtk.TreeView and
-    gtk.IconView. Instantiating this class directly is *impossible*,
+    """ This class provides shared functionality for Gtk.TreeView and
+    Gtk.IconView. Instantiating this class directly is *impossible*,
     as it depends on methods provided by the view classes. """
 
     def __init__(self, model):
         """ Constructs a new ThumbnailView.
-        @param model: L{gtk.TreeModel} instance. The model needs a pixbuf
+        @param model: L{Gtk.TreeModel} instance. The model needs a pixbuf
                       and a boolean column for internal calculations.
         """
 
-        #: Model index of the thumbnail status field (gobject.BOOLEAN)
+        #: Model index of the thumbnail status field (GObject.BOOLEAN)
         self.status_column = -1
         #: Model index of the pixbuf field
         self.pixbuf_column = -1
@@ -43,7 +43,7 @@ class ThumbnailViewBase(object):
         raise NotImplementedError()
 
     def get_visible_range(self):
-        """ See L{gtk.IconView.get_visible_range}. """
+        """ See L{Gtk.IconView.get_visible_range}. """
         raise NotImplementedError()
 
     def stop_update(self):
@@ -95,7 +95,7 @@ class ThumbnailViewBase(object):
         file_path, path = order
         pixbuf = self.generate_thumbnail(file_path, path)
         if pixbuf is not None:
-            gobject.idle_add(self._pixbuf_finished, path, pixbuf)
+            GObject.idle_add(self._pixbuf_finished, path, pixbuf)
 
     def _pixbuf_finished(self, path, pixbuf):
         """ Executed when a pixbuf was created, to actually insert the pixbuf
@@ -114,26 +114,26 @@ class ThumbnailViewBase(object):
         # Remove this idle handler.
         return 0
 
-class ThumbnailIconView(gtk.IconView, ThumbnailViewBase):
+class ThumbnailIconView(Gtk.IconView, ThumbnailViewBase):
     def __init__(self, model):
         super(ThumbnailIconView, self).__init__(model)
         ThumbnailViewBase.__init__(self, model)
 
         # Connect events
-        self.connect('expose-event', self.draw_thumbnails_on_screen)
+        self.connect('draw', self.draw_thumbnails_on_screen)
 
     def get_visible_range(self):
-        return gtk.IconView.get_visible_range(self)
+        return Gtk.IconView.get_visible_range(self)
 
-class ThumbnailTreeView(gtk.TreeView, ThumbnailViewBase):
+class ThumbnailTreeView(Gtk.TreeView, ThumbnailViewBase):
     def __init__(self, model):
         super(ThumbnailTreeView, self).__init__(model)
         ThumbnailViewBase.__init__(self, model)
 
         # Connect events
-        self.connect('expose-event', self.draw_thumbnails_on_screen)
+        self.connect('draw', self.draw_thumbnails_on_screen)
 
     def get_visible_range(self):
-        return gtk.TreeView.get_visible_range(self)
+        return Gtk.TreeView.get_visible_range(self)
 
 # vim: expandtab:sw=4:ts=4
