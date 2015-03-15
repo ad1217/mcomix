@@ -83,6 +83,8 @@ class _BookArea(gtk.ScrolledWindow):
         self._iconview.set_selection_mode(gtk.SELECTION_MULTIPLE)
         self.add(self._iconview)
 
+        self._iconview.set_item_padding(0)
+
         self._ui_manager = gtk.UIManager()
         self._tooltipstatus = status.TooltipStatusHelper(self._ui_manager,
             self._library.get_status_bar())
