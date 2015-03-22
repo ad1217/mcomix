@@ -338,6 +338,10 @@ class MainWindow(gtk.Window):
                 distribution_axis, alignment_axis = alignment_axis, distribution_axis
                 for i in range(pixbuf_count):
                     size_list[i].reverse()
+            if rotation in (180, 270):
+                rotation_list.reverse()
+                pixbuf_list.reverse()
+                size_list.reverse()
             for i in range(pixbuf_count):
                 rotation_list[i] = (rotation_list[i] + rotation) % 360
 
