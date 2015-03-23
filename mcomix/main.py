@@ -553,6 +553,9 @@ class MainWindow(gtk.Window):
 
     def _on_file_opened(self):
         self.uimanager.set_sensitivities()
+        number, count = self.filehandler.get_file_number()
+        self.statusbar.set_file_number(number, count)
+        self.statusbar.update()
 
     def _on_file_closed(self):
         self.clear()
