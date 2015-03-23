@@ -174,30 +174,6 @@ class MainWindow(gtk.Window):
         if prefs['invert smart scroll']:
             self.actiongroup.get_action('invert_scroll').activate()
 
-        if prefs['show toolbar']:
-            prefs['show toolbar'] = False
-            self.actiongroup.get_action('toolbar').activate()
-
-        if prefs['show menubar']:
-            prefs['show menubar'] = False
-            self.actiongroup.get_action('menubar').activate()
-
-        if prefs['show statusbar']:
-            prefs['show statusbar'] = False
-            self.actiongroup.get_action('statusbar').activate()
-
-        if prefs['show scrollbar']:
-            prefs['show scrollbar'] = False
-            self.actiongroup.get_action('scrollbar').activate()
-
-        if prefs['show thumbnails']:
-            prefs['show thumbnails'] = False
-            self.actiongroup.get_action('thumbnails').activate()
-
-        if prefs['hide all']:
-            prefs['hide all'] = False
-            self.actiongroup.get_action('hide_all').activate()
-
         if prefs['keep transformation']:
             prefs['keep transformation'] = False
             self.actiongroup.get_action('keep_transformation').activate()
@@ -206,13 +182,32 @@ class MainWindow(gtk.Window):
             prefs['vertical flip'] = False
             prefs['horizontal flip'] = False
 
+        self._toggle_controls = (
+            ('toolbar'   , 'show toolbar'   , self.toolbar         ),
+            ('menubar'   , 'show menubar'   , self.menubar         ),
+            ('statusbar' , 'show statusbar' , self.statusbar       ),
+            ('scrollbar' , 'show scrollbar' , None                 ),
+            ('thumbnails', 'show thumbnails', self.thumbnailsidebar),
+        )
+
+        # Start with all widgets hidden to avoid ugly transitions.
+        for action, control, widget in self._toggle_controls:
+            if widget is not None:
+                widget.hide()
+
+        toggleaction = self.actiongroup.get_action('hide_all')
+        toggleaction.set_active(prefs['hide all'])
+
+        for action, control, widget in self._toggle_controls:
+            toggleaction = self.actiongroup.get_action(action)
+            toggleaction.set_active(prefs[control])
+
         self.actiongroup.get_action('menu_autorotate_width').set_sensitive(False)
         self.actiongroup.get_action('menu_autorotate_height').set_sensitive(False)
 
         self.add(table)
         table.show()
         self._main_layout.show()
-        self._display_active_widgets()
 
         self._main_layout.set_events(gtk.gdk.BUTTON1_MOTION_MASK |
                                      gtk.gdk.BUTTON2_MOTION_MASK |
@@ -299,8 +294,46 @@ class MainWindow(gtk.Window):
             gobject.idle_add(self._draw_image, at_bottom, scroll,
                 priority=gobject.PRIORITY_HIGH_IDLE)
 
+    def _update_control_visibility(self, control, toggleaction=None, redraw=True):
+        """Called to update a control visibilty."""
+        if toggleaction is not None:
+            prefs[control] = toggleaction.get_active()
+        if 'hide all' == control:
+            hide_all = prefs[control]
+            for action, sub_control, widget in self._toggle_controls:
+                self.actiongroup.get_action(action).set_sensitive(not hide_all)
+                self._update_control_visibility(sub_control, redraw=False)
+            if hide_all:
+                self._scroll[constants.HEIGHT_AXIS].hide()
+                self._scroll[constants.WIDTH_AXIS].hide()
+        else:
+            enabled = not prefs['hide all']
+            enabled &= prefs[control]
+            if 'show toolbar' == control:
+                widget = self.toolbar
+            elif 'show statusbar' == control:
+                widget = self.statusbar
+            elif 'show menubar' == control:
+                widget = self.menubar
+            elif 'show thumbnails' == control:
+                widget = self.thumbnailsidebar
+                enabled &= self.filehandler.file_loaded
+                enabled &= self.imagehandler.get_number_of_pages() > 0
+            else:
+                widget = None
+            if widget is not None:
+                if enabled == widget.get_visible():
+                    # No change in visibility!
+                    redraw = False
+                else:
+                    (widget.show if enabled else widget.hide)()
+
+        if redraw:
+            # Since the size of the drawing area is dependent
+            # on the visible controls, redraw the page.
+            self.draw_image()
+
     def _draw_image(self, at_bottom, scroll):
-        self._display_active_widgets()
 
         if not self.filehandler.file_loaded:
             self._waiting_for_redraw = False
@@ -521,6 +554,7 @@ class MainWindow(gtk.Window):
         self.uimanager.set_sensitivities()
 
     def _on_file_closed(self):
+        self.thumbnailsidebar.clear()
         self.uimanager.set_sensitivities()
 
     def new_page(self, at_bottom=False):
@@ -539,7 +573,7 @@ class MainWindow(gtk.Window):
     @callback.Callback
     def page_changed(self):
         """ Called on page change. """
-        pass
+        self._update_control_visibility('show thumbnails', redraw=False)
 
     def set_page(self, num, at_bottom=False):
         if num == self.imagehandler.get_current_page():
@@ -668,7 +702,8 @@ class MainWindow(gtk.Window):
                 not prefs['hide all']):
 
                 self.hide_all_forced = True
-                self.change_hide_all()
+                prefs['hide all'] = True
+                self._update_control_visibility('hide all', redraw=False)
         else:
             self.unfullscreen()
 
@@ -676,9 +711,9 @@ class MainWindow(gtk.Window):
                 prefs['hide all'] and
                 self.hide_all_forced):
 
-                self.change_hide_all()
-
-            self.hide_all_forced = False
+                self.hide_all_forced = False
+                prefs['hide all'] = False
+                self._update_control_visibility('hide all', redraw=False)
 
     def change_zoom_mode(self, radioaction=None, *args):
         if radioaction:
@@ -703,35 +738,23 @@ class MainWindow(gtk.Window):
         self.zoom.set_scale_up(prefs['stretch'])
         self.draw_image()
 
-    def change_toolbar_visibility(self, *args):
-        prefs['show toolbar'] = not prefs['show toolbar']
-        self.draw_image()
+    def change_toolbar_visibility(self, toggleaction):
+        self._update_control_visibility('show toolbar', toggleaction)
 
-    def change_menubar_visibility(self, *args):
-        prefs['show menubar'] = not prefs['show menubar']
-        self.draw_image()
+    def change_menubar_visibility(self, toggleaction):
+        self._update_control_visibility('show menubar', toggleaction)
 
-    def change_statusbar_visibility(self, *args):
-        prefs['show statusbar'] = not prefs['show statusbar']
-        self.draw_image()
+    def change_statusbar_visibility(self, toggleaction):
+        self._update_control_visibility('show statusbar', toggleaction)
 
-    def change_scrollbar_visibility(self, *args):
-        prefs['show scrollbar'] = not prefs['show scrollbar']
-        self.draw_image()
+    def change_scrollbar_visibility(self, toggleaction):
+        self._update_control_visibility('show scrollbar', toggleaction)
 
-    def change_thumbnails_visibility(self, *args):
-        prefs['show thumbnails'] = not prefs['show thumbnails']
-        self.draw_image()
+    def change_thumbnails_visibility(self, toggleaction):
+        self._update_control_visibility('show thumbnails', toggleaction)
 
-    def change_hide_all(self, *args):
-        prefs['hide all'] = not prefs['hide all']
-        sensitive = not prefs['hide all']
-        self.actiongroup.get_action('toolbar').set_sensitive(sensitive)
-        self.actiongroup.get_action('menubar').set_sensitive(sensitive)
-        self.actiongroup.get_action('statusbar').set_sensitive(sensitive)
-        self.actiongroup.get_action('scrollbar').set_sensitive(sensitive)
-        self.actiongroup.get_action('thumbnails').set_sensitive(sensitive)
-        self.draw_image()
+    def change_hide_all(self, toggleaction):
+        self._update_control_visibility('hide all', toggleaction)
 
     def change_keep_transformation(self, *args):
         prefs['keep transformation'] = not prefs['keep transformation']
@@ -958,41 +981,6 @@ class MainWindow(gtk.Window):
 
     def get_bg_colour(self):
         return self._bg_colour
-
-    def _display_active_widgets(self):
-        """Hide and/or show main window widgets depending on the current
-        state.
-        """
-
-        if not prefs['hide all']:
-
-            if prefs['show toolbar']:
-                self.toolbar.show_all()
-            else:
-                self.toolbar.hide_all()
-
-            if prefs['show statusbar']:
-                self.statusbar.show_all()
-            else:
-                self.statusbar.hide_all()
-
-            if prefs['show menubar']:
-                self.menubar.show_all()
-            else:
-                self.menubar.hide_all()
-
-            if prefs['show thumbnails'] and self.filehandler.file_loaded:
-                self.thumbnailsidebar.show()
-            else:
-                self.thumbnailsidebar.hide()
-
-        else:
-            self.toolbar.hide_all()
-            self.menubar.hide_all()
-            self.statusbar.hide_all()
-            self.thumbnailsidebar.hide()
-            self._scroll[constants.HEIGHT_AXIS].hide_all()
-            self._scroll[constants.WIDTH_AXIS].hide_all()
 
     def extract_page(self, *args):
         """ Derive some sensible filename (archive name + _ + filename should do) and offer
