@@ -13,7 +13,6 @@ from mcomix.preferences import prefs
 from mcomix import archive_extractor
 from mcomix import archive_tools
 from mcomix import image_tools
-from mcomix import icons
 from mcomix import tools
 from mcomix import constants
 from mcomix import file_provider
@@ -197,7 +196,6 @@ class FileHandler(object):
                     self._window.set_page(last_image_index + 1)
 
             self._window.set_page(current_image_index + 1)
-            self._window.thumbnailsidebar.load_thumbnails()
 
             if self.archive_type is not None:
                 self._extractor.extract()
@@ -241,11 +239,8 @@ class FileHandler(object):
             self._stop_waiting = True
             self._comment_files = []
             self._name_table.clear()
-            self._window.clear()
             self._extractor.stop()
             self._window.imagehandler.cleanup()
-            self._window.thumbnailsidebar.clear()
-            self._window.set_icon_list(*icons.mcomix_icons())
             self.file_closed()
         # Catch up on UI events, so we don't leave idle callbacks.
         while gtk.events_pending():
