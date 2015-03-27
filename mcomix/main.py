@@ -936,6 +936,9 @@ class MainWindow(gtk.Window):
                     height -= self._scroll[constants.WIDTH_AXIS]\
                         .size_request()[constants.HEIGHT_AXIS]
 
+        # FIXME: can happen when aggressively playing with window resize...
+        assert width > 0 and height > 0
+
         return width, height
 
     def get_layout_pointer_position(self):
