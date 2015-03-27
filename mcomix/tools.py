@@ -6,6 +6,7 @@ import re
 import gc
 import bisect
 import operator
+import math
 
 
 NUMERIC_REGEXP = re.compile(r"\d+|\D+")  # Split into numerics and characters
@@ -102,13 +103,7 @@ def get_data_directory():
 
 
 def number_of_digits(n):
-    num_of_digits = 1
-
-    while n > 9:
-        n /= 10
-        num_of_digits += 1
-
-    return num_of_digits
+    return int(math.log10(n)) + 1
 
 
 def garbage_collect():
