@@ -573,8 +573,6 @@ class MainWindow(gtk.Window):
             prefs['horizontal flip'] = False
             prefs['vertical flip'] = False
 
-        self.thumbnailsidebar.update_select()
-
         self.draw_image(at_bottom=at_bottom, scroll=True)
 
     @callback.Callback
