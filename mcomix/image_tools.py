@@ -2,6 +2,7 @@
 
 from collections import namedtuple
 import binascii
+import re
 import sys
 import operator
 import gtk
@@ -12,6 +13,15 @@ from PIL.JpegImagePlugin import _getexif
 
 from mcomix.preferences import prefs
 from mcomix import constants
+
+
+SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
+                                   '|'.join(sorted(reduce(
+                                       operator.add,
+                                       map(operator.itemgetter("extensions"),
+                                           gtk.gdk.pixbuf_get_formats())))),
+                                   re.I)
+
 
 def rotate_pixbuf(src, rotation):
     rotation %= 360
@@ -389,7 +399,7 @@ def combine_pixbufs( pixbuf1, pixbuf2, are_in_manga_mode ):
 def is_image_file(path):
     """Return True if the file at <path> is an image file recognized by PyGTK.
     """
-    return constants.SUPPORTED_IMAGE_REGEX.search(path) is not None
+    return SUPPORTED_IMAGE_REGEX.search(path) is not None
 
 def convert_rgb16list_to_rgba8int(c):
     return 0x000000FF | (c[0] >> 8 << 24) | (c[1] >> 8 << 16) | (c[2] >> 8 << 8)
