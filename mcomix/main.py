@@ -315,6 +315,11 @@ class MainWindow(gtk.Window):
             size_list = [[pixbuf.get_width(), pixbuf.get_height()]
                          for pixbuf in pixbuf_list]
 
+            if self.is_manga_mode:
+                orientation = constants.MANGA_ORIENTATION
+            else:
+                orientation = constants.WESTERN_ORIENTATION
+
             # Rotation handling:
             # - apply Exif rotation on individual images
             # - apply automatic rotation (size based) on whole page
@@ -336,12 +341,12 @@ class MainWindow(gtk.Window):
             rotation = (rotation + prefs['rotation']) % 360
             if rotation in (90, 270):
                 distribution_axis, alignment_axis = alignment_axis, distribution_axis
+                orientation = list(orientation)
+                orientation.reverse()
                 for i in range(pixbuf_count):
                     size_list[i].reverse()
             if rotation in (180, 270):
-                rotation_list.reverse()
-                pixbuf_list.reverse()
-                size_list.reverse()
+                orientation = tools.vector_opposite(orientation)
             for i in range(pixbuf_count):
                 rotation_list[i] = (rotation_list[i] + rotation) % 360
 
@@ -363,10 +368,13 @@ class MainWindow(gtk.Window):
                 zoom_dummy_size[distribution_axis] = dasize
                 scaled_sizes = self.zoom.get_zoomed_size(size_list, zoom_dummy_size,
                     distribution_axis)
-                self.layout = layout.FiniteLayout(scaled_sizes, viewport_size,
-                    constants.MANGA_ORIENTATION if self.is_manga_mode
-                    else constants.WESTERN_ORIENTATION, self._spacing,
-                    expand_area, distribution_axis, alignment_axis)
+                self.layout = layout.FiniteLayout(scaled_sizes,
+                                                  viewport_size,
+                                                  orientation,
+                                                  self._spacing,
+                                                  expand_area,
+                                                  distribution_axis,
+                                                  alignment_axis)
                 union_scaled_size = self.layout.get_union_box().get_size()
                 scrollbar_requests = map(operator.or_, scrollbar_requests,
                     tools.smaller(viewport_size, union_scaled_size))
@@ -416,6 +424,12 @@ class MainWindow(gtk.Window):
                 self.images[i].show()
             for i in range(pixbuf_count, len(self.images)):
                 self.images[i].hide()
+
+            # Reset orientation so scrolling behaviour is sane.
+            if self.is_manga_mode:
+                self.layout.set_orientation(constants.MANGA_ORIENTATION)
+            else:
+                self.layout.set_orientation(constants.WESTERN_ORIENTATION)
 
             if scroll:
                 if at_bottom:
