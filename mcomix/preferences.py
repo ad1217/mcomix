@@ -97,7 +97,8 @@ prefs = {
     'fit to size mode': constants.ZOOM_MODE_HEIGHT,
     'fit to size px': 1800,
     'scan for new books on library startup': True,
-    'openwith commands': []  # (label, command) pairs
+    'openwith commands': [],  # (label, command) pairs
+    'use pil': False,
 }
 
 def read_preferences_file():

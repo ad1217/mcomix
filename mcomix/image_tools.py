@@ -6,21 +6,36 @@ import re
 import sys
 import operator
 import gtk
-import PIL.Image as Image
-import PIL.ImageEnhance as ImageEnhance
-import PIL.ImageOps as ImageOps
+from PIL import Image
+from PIL import ImageEnhance
+from PIL import ImageOps
+from PIL.ImageFile import ImageFile
 from PIL.JpegImagePlugin import _getexif
+from StringIO import StringIO
 
 from mcomix.preferences import prefs
 from mcomix import constants
 
 
-SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
-                                   '|'.join(sorted(reduce(
-                                       operator.add,
-                                       map(operator.itemgetter("extensions"),
-                                           gtk.gdk.pixbuf_get_formats())))),
-                                   re.I)
+USE_PIL = prefs['use pil']
+print 'image_tools is using %s' % ('PIL' if USE_PIL else 'GDK')
+
+
+if USE_PIL:
+    # Make sure all supported image formats are registered.
+    Image.init()
+    SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
+                                       '|'.join(sorted(
+                                           [ext[1:] for ext in Image.EXTENSION]
+                                       )),
+                                       re.I)
+else:
+    SUPPORTED_IMAGE_REGEX = re.compile(r'\.(%s)$' %
+                                       '|'.join(sorted(reduce(
+                                           operator.add,
+                                           map(operator.itemgetter("extensions"),
+                                               gtk.gdk.pixbuf_get_formats())))),
+                                       re.I)
 
 
 def rotate_pixbuf(src, rotation):
@@ -233,19 +248,32 @@ def get_most_common_edge_colour(pixbufs, edge=2):
     most_used = group_colors(ungrouped_colors)
     return [color * 257 for color in most_used]
 
-def pil_to_pixbuf(image):
+def pil_to_pixbuf(image, keep_orientation=False):
     """Return a pixbuf created from the PIL <image>."""
     if image.mode.startswith('RGB'):
         imagestr = image.tostring()
         IS_RGBA = image.mode == 'RGBA'
-        return gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
+        pixbuf = gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
             IS_RGBA, 8, image.size[0], image.size[1],
             (IS_RGBA and 4 or 3) * image.size[0])
     else:
         imagestr = image.convert('RGB').tostring()
-        return gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
+        pixbuf = gtk.gdk.pixbuf_new_from_data(imagestr, gtk.gdk.COLORSPACE_RGB,
             False, 8, image.size[0], image.size[1],
             3 * image.size[0])
+    if keep_orientation:
+        # Keep orientation metadata.
+        orientation = None
+        exif = image.info.get('exif')
+        if exif is not None:
+            exif = _getexif(image)
+            orientation = exif.get(274, None)
+        if orientation is None:
+            # Maybe it's a PNG? Try alternative method.
+            orientation = _get_png_implied_rotation(image)
+        if orientation is not None:
+            setattr(pixbuf, 'orientation', str(orientation))
+    return pixbuf
 
 def pixbuf_to_pil(pixbuf):
     """Return a PIL image created from <pixbuf>."""
@@ -253,15 +281,22 @@ def pixbuf_to_pil(pixbuf):
     stride = pixbuf.get_rowstride()
     pixels = pixbuf.get_pixels()
     mode = pixbuf.get_has_alpha() and 'RGBA' or 'RGB'
-    return Image.frombuffer(mode, dimensions, pixels, 'raw', mode, stride, 1)
+    image = Image.frombuffer(mode, dimensions, pixels, 'raw', mode, stride, 1)
+    return image
 
 def load_pixbuf(path):
     """ Loads a pixbuf from a given image file. """
+    if USE_PIL:
+        return pil_to_pixbuf(Image.open(path), keep_orientation=True)
     return gtk.gdk.pixbuf_new_from_file(path)
 
 def load_pixbuf_size(path, width, height):
     """ Loads a pixbuf from a given image file and scale it to fit
     inside (width, height). """
+    if USE_PIL:
+        im = Image.open(path)
+        im.thumbnail((width, height))
+        return pil_to_pixbuf(im, keep_orientation=True)
     format, src_width, src_height = get_image_info(path)
     if src_width <= width and src_height <= height:
         src = gtk.gdk.pixbuf_new_from_file(path)
@@ -283,6 +318,8 @@ def load_pixbuf_size(path, width, height):
 
 def load_pixbuf_data(imgdata):
     """ Loads a pixbuf from the data passed in <imgdata>. """
+    if USE_PIL:
+        return pil_to_pixbuf(Image.open(StringIO(imgdata)), keep_orientation=True)
     loader = gtk.gdk.PixbufLoader()
     loader.write(imgdata, len(imgdata))
     loader.close()
@@ -309,12 +346,17 @@ def enhance(pixbuf, brightness=1.0, contrast=1.0, saturation=1.0,
         im = ImageEnhance.Sharpness(im).enhance(sharpness)
     return pil_to_pixbuf(im)
 
-def _get_png_implied_rotation(pixbuf):
+def _get_png_implied_rotation(pixbuf_or_image):
     """Same as <get_implied_rotation> for PNG files.
 
     Lookup for Exif data in the tEXt chunk.
     """
-    exif = pixbuf.get_option('tEXt::Raw profile type exif')
+    if isinstance(pixbuf_or_image, gtk.gdk.Pixbuf):
+        exif = pixbuf_or_image.get_option('tEXt::Raw profile type exif')
+    elif isinstance(pixbuf_or_image, ImageFile):
+        exif = pixbuf_or_image.info.get('Raw profile type exif')
+    else:
+        raise ValueError()
     if exif is None:
         return None
     exif = exif.split('\n')
@@ -345,7 +387,9 @@ def get_implied_rotation(pixbuf):
     by a camera that is held sideways might store this fact in its Exif data,
     and the pixbuf loader will set the orientation option correspondingly.
     """
-    orientation = pixbuf.get_option('orientation')
+    orientation = getattr(pixbuf, 'orientation', None)
+    if orientation is None:
+        orientation = pixbuf.get_option('orientation')
     if orientation is None:
         # Maybe it's a PNG? Try alternative method.
         orientation = _get_png_implied_rotation(pixbuf)
