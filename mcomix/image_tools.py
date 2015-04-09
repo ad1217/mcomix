@@ -9,9 +9,13 @@ import gtk
 from PIL import Image
 from PIL import ImageEnhance
 from PIL import ImageOps
-from PIL.ImageFile import ImageFile
 from PIL.JpegImagePlugin import _getexif
-from PIL import VERSION as PIL_VERSION
+try:
+    from PIL import PILLOW_VERSION
+    PIL_VERSION = ('Pillow', PILLOW_VERSION)
+except ImportError:
+    from PIL import VERSION as PIL_VERSION
+    PIL_VERSION = ('PIL', PIL_VERSION)
 from cStringIO import StringIO
 
 from mcomix.preferences import prefs
@@ -26,8 +30,9 @@ if sys.platform == 'win32':
 else:
     USE_PIL = False
 
-log.info('Using %s for loading images (versions: PIL [%s], GDK [%s])',
-         'PIL' if USE_PIL else 'GDK', PIL_VERSION,
+log.info('Using %s for loading images (versions: %s [%s], GDK [%s])',
+         'PIL' if USE_PIL else 'GDK',
+         PIL_VERSION[0], PIL_VERSION[1],
          # Unfortunately gdk_pixbuf_version is not exported,
          # so show the GTK+ version instead.
          'GTK+ ' + '.'.join(map(str, gtk.gtk_version)))
@@ -356,7 +361,7 @@ def _get_png_implied_rotation(pixbuf_or_image):
     """
     if isinstance(pixbuf_or_image, gtk.gdk.Pixbuf):
         exif = pixbuf_or_image.get_option('tEXt::Raw profile type exif')
-    elif isinstance(pixbuf_or_image, ImageFile):
+    elif isinstance(pixbuf_or_image, Image.Image):
         exif = pixbuf_or_image.info.get('Raw profile type exif')
     else:
         raise ValueError()
@@ -462,14 +467,21 @@ def get_image_info(path):
     """Return image informations:
         (format, width, height)
     """
+    info = None
     if USE_PIL:
-        im = Image.open(path)
-        info = (im.format,) + im.size
+        try:
+            im = Image.open(path)
+            info = (im.format,) + im.size
+        except IOError:
+            # If the file cannot be found, or the image
+            # cannot be opened and identified.
+            im = None
     else:
         info = gtk.gdk.pixbuf_get_file_info(path)
-        if info is None:
-            info = (_('Unknown filetype'), 0, 0)
-        info = info[0]['name'].upper(), info[1], info[2]
+        if info is not None:
+            info = info[0]['name'].upper(), info[1], info[2]
+    if info is None:
+        info = (_('Unknown filetype'), 0, 0)
     return info
 
 def get_supported_formats():
