@@ -104,7 +104,7 @@ def get_data_directory():
 
 def number_of_digits(n):
     if 0 == n:
-        return 0
+        return 1
     return int(math.log10(abs(n))) + 1
 
 
