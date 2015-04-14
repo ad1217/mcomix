@@ -361,8 +361,6 @@ class MainWindow(gtk.Window):
             self._waiting_for_redraw = False
             return False
 
-        self.is_virtual_double_page = self.imagehandler.get_virtual_double_page()
-
         if self.imagehandler.page_is_available():
             distribution_axis = constants.DISTRIBUTION_AXIS
             alignment_axis = constants.ALIGNMENT_AXIS
@@ -569,7 +567,9 @@ class MainWindow(gtk.Window):
         current_page = self.imagehandler.get_current_page()
         nb_pages = 2 if self.displayed_double() else 1
         if current_page <= page < (current_page + nb_pages):
+            self.is_virtual_double_page = self.imagehandler.get_virtual_double_page()
             self.draw_image(scroll_to=self._last_scroll_destination)
+            self._update_page_information()
 
         # Use first page as application icon when opening archives.
         if (page == 1
@@ -610,6 +610,7 @@ class MainWindow(gtk.Window):
     @callback.Callback
     def page_changed(self):
         """ Called on page change. """
+        self.is_virtual_double_page = self.imagehandler.get_virtual_double_page()
         self.thumbnailsidebar.load_thumbnails()
         self._update_page_information()
 
