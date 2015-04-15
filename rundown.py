@@ -57,7 +57,7 @@ for line in changelist:
         batch = None
         continue
 
-    match = re.match(r'^([0-9a-f]+) (.*)$', line)
+    match = re.match(r'^([0-9a-f]{7,}) (.*)$', line)
     if match is None:
         # New batch.
         batch = Batch(line, [])
