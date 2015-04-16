@@ -513,16 +513,38 @@ class EventHandler:
 
         self._window.cursor_handler.set_cursor_type(constants.NORMAL_CURSOR)
 
+        half_of_width = self._window.width / 2
+        fullscreen_toggler_height = self._window.height / 5
+
         if (event.button == 1):
 
             if event.x_root == self._pressed_pointer_pos_x and \
                 event.y_root == self._pressed_pointer_pos_y and \
                 not self._window.was_out_of_focus:
 
-                if event.state & gtk.gdk.SHIFT_MASK:
-                    self._flip_page(10)
-                else:
-                    self._flip_page(1)
+                  """ Full screen area toggle """
+                  if self._pressed_pointer_pos_y < fullscreen_toggler_height:
+                    if self._window.is_fullscreen:
+                        self._window.actiongroup.get_action('fullscreen').set_active(False)
+                    else:
+                        self._window.actiongroup.get_action('fullscreen').activate()
+
+                  else:
+                    """ East / West page flipping """
+                    if self._pressed_pointer_pos_x > half_of_width:
+                        if event.state & gtk.gdk.SHIFT_MASK:
+                            self._flip_page(10)
+                        else:
+                            self._flip_page(1) 
+
+                    else:
+                        if event.state & gtk.gdk.SHIFT_MASK:
+                            self._flip_page(-10)
+                        else:
+                            self._flip_page(-1) 
+
+
+                
 
             else:
                 self._window.was_out_of_focus = False
