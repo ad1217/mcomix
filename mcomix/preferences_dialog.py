@@ -191,6 +191,13 @@ class _PreferencesDialog(gtk.Dialog):
         page.add_row(gtk.Label(_('Store information about recently opened files:')),
             self._create_store_recent_combobox())
 
+        page.new_section(_('Navigation'))
+
+        page.add_row(self._create_pref_check_button(
+            _('Enable additional controls in the viewing area'),
+            'additional viewing area controls',
+            _("Left region: Flip back\nRight region: Flip forward\nMiddle region: On screen display\nDouble click: Toggle fullscreen")))
+
         return page
 
     def _init_display_tab(self):

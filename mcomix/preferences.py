@@ -10,6 +10,7 @@ from mcomix import constants
 # All the preferences are stored here.
 prefs = {
     'comment extensions': constants.ACCEPTED_COMMENT_EXTENSIONS,
+    'additional viewing area controls': True,
     'auto load last file': False,
     'page of last file': 1,
     'path to last file': '',
