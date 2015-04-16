@@ -489,14 +489,16 @@ class EventHandler:
     def mouse_press_event(self, widget, event):
         """Handle mouse click events on the main layout area."""
 
-        """ Full screen area toggle """
-        if event.type == gtk.gdk._2BUTTON_PRESS:
-            if self._window.is_fullscreen:
-                self._window.actiongroup.get_action('fullscreen').set_active(False)
-            else:
-                self._window.actiongroup.get_action('fullscreen').activate()
+        """ Determines the behavior of the viewing area controls """
+        if prefs['additional viewing area controls']:
+            """ Full screen area toggle """
+            if event.type == gtk.gdk._2BUTTON_PRESS:
+                if self._window.is_fullscreen:
+                    self._window.actiongroup.get_action('fullscreen').set_active(False)
+                else:
+                    self._window.actiongroup.get_action('fullscreen').activate()
 
-        elif event.button == 1:
+        if event.button == 1:
             self._pressed_pointer_pos_x = event.x_root
             self._pressed_pointer_pos_y = event.y_root
             self._last_pointer_pos_x = event.x_root
@@ -520,29 +522,38 @@ class EventHandler:
 
         self._window.cursor_handler.set_cursor_type(constants.NORMAL_CURSOR)
 
-        third_of_window = self._window.width / 3
-
         if (event.button == 1):
 
             if event.x_root == self._pressed_pointer_pos_x and \
                 event.y_root == self._pressed_pointer_pos_y and \
                 not self._window.was_out_of_focus:
 
-                """ East / West page flipping """
-                if self._pressed_pointer_pos_x >= third_of_window * 2:
+                """ Determines the behavior of the viewing area controls """
+                if prefs['additional viewing area controls']:
+
+                    third_of_window = self._window.width / 3
+
+                    """ East / West page flipping """
+                    if event.x >= third_of_window * 2:
+                        if event.state & gtk.gdk.SHIFT_MASK:
+                            self._flip_page(10)
+                        else:
+                            self._flip_page(1) 
+
+                    elif event.x <= third_of_window:
+                        if event.state & gtk.gdk.SHIFT_MASK:
+                            self._flip_page(-10)
+                        else:
+                            self._flip_page(-1) 
+                
+                    else:
+                        self._window.show_info_panel()
+
+                else:
                     if event.state & gtk.gdk.SHIFT_MASK:
                         self._flip_page(10)
                     else:
                         self._flip_page(1) 
-
-                elif self._pressed_pointer_pos_x <= third_of_window:
-                    if event.state & gtk.gdk.SHIFT_MASK:
-                        self._flip_page(-10)
-                    else:
-                        self._flip_page(-1) 
-                
-                else:
-                    self._window.show_info_panel()
 
             else:
                 self._window.was_out_of_focus = False
