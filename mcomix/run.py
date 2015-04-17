@@ -51,6 +51,9 @@ def parse_arguments(argv):
             help=_('Show the version number and exit.'))
 
     viewmodes = optparse.OptionGroup(parser, _('View modes'))
+
+    viewmodes.add_option('-k', '--skinless', dest='skinless', action='store_true',
+            help=_('Start the application without any window decorations or toolbars.'))
     viewmodes.add_option('-f', '--fullscreen', dest='fullscreen', action='store_true',
             help=_('Start the application in fullscreen mode.'))
     viewmodes.add_option('-m', '--manga', dest='manga', action='store_true',
@@ -196,7 +199,7 @@ def run():
 
     gtk.gdk.set_program_class(constants.APPNAME)
 
-    window = main.MainWindow(fullscreen = opts.fullscreen, is_slideshow = opts.slideshow,
+    window = main.MainWindow(skinless = opts.skinless, fullscreen = opts.fullscreen, is_slideshow = opts.slideshow,
             show_library = opts.library, manga_mode = opts.manga,
             double_page = opts.doublepage, zoom_mode = opts.zoommode,
             open_path = open_path, open_page = open_page)

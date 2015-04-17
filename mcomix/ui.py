@@ -108,6 +108,8 @@ class MainUI(gtk.UIManager):
             ('expander', None, None, None, None, None)])
 
         self._actiongroup.add_toggle_actions([
+            ('skinless', None, _('_Skinless'),
+                None, _('Skinless mode'), window.change_skinless),
             ('fullscreen', gtk.STOCK_FULLSCREEN, _('_Fullscreen'),
                 None, _('Fullscreen mode'), window.change_fullscreen),
             ('double_page', 'mcomix-double-page', _('_Double page mode'),
@@ -254,6 +256,7 @@ class MainUI(gtk.UIManager):
                     <menuitem action="preferences" />
                 </menu>
                 <menu action="menu_view">
+                    <menuitem action="skinless" />
                     <menuitem action="fullscreen" />
                     <menuitem action="double_page" />
                     <menuitem action="manga_mode" />
@@ -347,6 +350,7 @@ class MainUI(gtk.UIManager):
                     <menuitem action="previous_directory" />
                 </menu>
                 <menu action="menu_view_popup">
+                    <menuitem action="skinless" />
                     <menuitem action="fullscreen" />
                     <menuitem action="double_page" />
                     <menuitem action="manga_mode" />

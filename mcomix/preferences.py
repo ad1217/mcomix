@@ -29,6 +29,7 @@ prefs = {
     'cache': True,
     'stretch': False,
     'default double page': False,
+    'skinless': False,
     'default fullscreen': False,
     'zoom mode': constants.ZOOM_MODE_BEST,
     'default manga mode': False,

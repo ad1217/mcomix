@@ -43,7 +43,7 @@ class MainWindow(gtk.Window):
     program when closed.
     """
 
-    def __init__(self, fullscreen=False, is_slideshow=slideshow,
+    def __init__(self, skinless=False, fullscreen=False, is_slideshow=slideshow,
             show_library=False, manga_mode=False, double_page=False,
             zoom_mode=None, open_path=None, open_page=1):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
@@ -52,6 +52,7 @@ class MainWindow(gtk.Window):
         # Attributes
         # ----------------------------------------------------------------
         self.is_in_focus = True
+        self.is_skinless = False
         self.is_fullscreen = False
         self.is_double_page = False
         self.is_manga_mode = False
@@ -244,6 +245,12 @@ class MainWindow(gtk.Window):
 
         self.uimanager.set_sensitivities()
         self.show()
+
+        if prefs['skinless'] or skinless:
+            self.is_skinless = False
+            self.hide_all_forced = True
+            self.change_hide_all()
+            self.set_decorated(False)
 
         # If MComix is set to start in fullscreen mode, it
         # cannot switch to windowed mode on Win32 unless this
@@ -614,6 +621,22 @@ class MainWindow(gtk.Window):
 
     def change_invert_scroll(self, toggleaction):
         prefs['invert smart scroll'] = toggleaction.get_active()
+
+    def change_skinless(self, toggleaction):
+        if self.is_skinless:
+            self.set_decorated(True)
+            self.is_skinless = False
+
+            self.hide_all_forced = False
+            self.change_hide_all()
+            self.set_decorated(True)
+
+        else:
+            self.set_decorated(False)
+            self.is_skinless = True
+            self.hide_all_forced = True
+            self.change_hide_all()
+            self.set_decorated(False)
 
     def change_fullscreen(self, toggleaction):
         self.is_fullscreen = toggleaction.get_active()
