@@ -538,13 +538,13 @@ class EventHandler:
                         if event.state & gtk.gdk.SHIFT_MASK:
                             self._flip_page(10)
                         else:
-                            self._flip_page(1) 
+                            self._flip_page(1 - 2*self._window.is_manga_mode) 
 
                     elif event.x <= third_of_window:
                         if event.state & gtk.gdk.SHIFT_MASK:
                             self._flip_page(-10)
                         else:
-                            self._flip_page(-1) 
+                            self._flip_page(2*self._window.is_manga_mode -1) 
                 
                     else:
                         self._window.show_info_panel()
